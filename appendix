@@ -1,0 +1,79 @@
+# Number Switching Task: Technical Appendix
+
+## Purpose
+
+The Number Switching Task application measures cognitive flexibility and task-switching abilities in participants. It provides a standardized, computerized version of a cognitive psychology paradigm, allowing for precise timing and data collection.
+
+## Functional Overview
+
+The application presents 20 trials, each displaying a 9-digit number. Participants categorize each digit as odd or even by pressing corresponding keys. The task's difficulty varies across four levels based on the number of required mental switches, challenging the participant's cognitive control.
+
+## System Architecture
+
+### Frontend (React)
+
+Built using React, providing a responsive and interactive user interface.
+
+Key components:
+- App.js: Root component, manages routing
+- ExperimentScreen.js: Core experiment logic and UI
+- ResultsView.js: Displays experiment results and export options
+
+### Backend (Node.js)
+
+A lightweight Node.js server handles static file serving and potential future API endpoints.
+
+### Data Storage
+
+IndexedDB is used for client-side storage of trial data and images.
+
+## Key Modules
+
+1. numberGenerator.js
+   - Generates trial numbers based on difficulty levels
+   - Ensures balanced distribution of difficulty across trials
+   - Implements switch-based difficulty logic
+
+2. camera.js
+   - Manages webcam access and image capture
+
+3. indexedDB.js
+   - Handles data persistence and retrieval
+
+## Data Flow
+
+1. Trial numbers are generated at the start of the experiment
+2. User responses are recorded in real-time
+3. Trial data is stored in IndexedDB after each trial
+4. Images are captured and stored for successful trials
+5. At experiment completion, data is compiled and available for export
+
+## Difficulty Levels
+
+Four levels of difficulty based on the number of required switches:
+1. Level 1: 1-2 switches
+2. Level 2: 3-4 switches
+3. Level 3: 5-6 switches
+4. Level 4: 7 or more switches
+
+## Number Generation Logic
+
+- Generates random 9-digit numbers
+- Counts the number of switches between odd and even digits
+- Ensures each number meets the criteria for its assigned difficulty level
+- Shuffles the trial order for randomized presentation
+
+## Data Export
+
+Data is exported as a ZIP file containing:
+- CSV file with trial data (number, responses, timing, accuracy, difficulty level)
+- JPEG images from successful trials
+
+## Extensibility
+
+The modular design allows for easy addition of new features or modifications:
+- Additional difficulty parameters can be added to numberGenerator.js
+- New data collection methods can be integrated into ExperimentScreen.js
+- ResultsView.js can be extended for more complex data analysis
+
+This technical document provides a comprehensive overview of the Number Switching Task application's structure and functionality, serving as a guide for future development and customization.
