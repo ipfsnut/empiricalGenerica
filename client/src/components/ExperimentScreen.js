@@ -95,7 +95,6 @@ function ExperimentScreen() {
       setExperimentComplete(true);
     }
   };
-
   const exportData = async () => {
     const zip = new JSZip();
     let csvContent = "Trial Number,Effort Level,All Correct,Image Name,Responses\n";

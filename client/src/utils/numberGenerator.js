@@ -33,11 +33,19 @@ const generateNumber = (effortLevel) => {
   const trialNumbers = [];
   const effortLevels = Object.values(EFFORT_LEVELS);
   
-  for (let i = 0; i < 20; i++) {
-    const effortLevel = effortLevels[i % 4];
-    trialNumbers.push(generateNumber(effortLevel));
+  // Create an array with 5 of each effort level
+  const balancedLevels = effortLevels.flatMap(level => Array(5).fill(level));
+  
+  // Fisher-Yates shuffle
+  for (let i = balancedLevels.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [balancedLevels[i], balancedLevels[j]] = [balancedLevels[j], balancedLevels[i]];
   }
   
-  console.log('Generated trial numbers:', trialNumbers);
+  // Generate numbers based on the shuffled levels
+  balancedLevels.forEach(level => {
+    trialNumbers.push(generateNumber(level));
+  });
+  
   return trialNumbers;
 };
