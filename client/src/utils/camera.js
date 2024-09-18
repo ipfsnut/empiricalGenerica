@@ -1,22 +1,20 @@
 export const takePicture = () => {
   return new Promise((resolve, reject) => {
-    navigator.mediaDevices.getUserMedia({ video: true })
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
       .then(stream => {
-        const video = document.createElement('video');
-        video.srcObject = stream;
-        video.play();
+        const track = stream.getVideoTracks()[0];
+        const imageCapture = new ImageCapture(track);
 
-        video.onloadedmetadata = () => {
-          const canvas = document.createElement('canvas');
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          canvas.getContext('2d').drawImage(video, 0, 0);
-          canvas.toBlob(blob => {
-            stream.getTracks().forEach(track => track.stop());
+        imageCapture.takePhoto()
+          .then(blob => {
+            track.stop();
             resolve(blob);
-          }, 'image/jpeg', 0.95); // You can adjust quality here
-        };
+          })
+          .catch(error => {
+            track.stop();
+            reject(error);
+          });
       })
-      .catch(error => reject(error));
+      .catch(reject);
   });
 };

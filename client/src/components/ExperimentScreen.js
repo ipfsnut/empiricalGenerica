@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import '../styles/ExperimentScreen.css';
-import { takePicture } from '../utils/camera';
+import { initializeCamera, queueCapture, shutdownCamera } from '../utils/cameraManager';
 import { initDB, saveTrialData, getAllTrialData } from '../utils/indexedDB';
 import ResultsView from './ResultsView';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { generateTrialNumbers } from '../utils/numberGenerator';
-
 function ExperimentScreen() {
   const [currentTrial, setCurrentTrial] = useState(1);
   const [number, setNumber] = useState('');
@@ -21,10 +20,12 @@ function ExperimentScreen() {
 
   useEffect(() => {
     initDB().then(setDB).catch(console.error);
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(() => setCameraPermission(true))
-      .catch(error => console.error('Camera permission denied:', error));
+    initializeCamera().then(() => setCameraPermission(true)).catch(console.error);
     setTrialNumbers(generateTrialNumbers());
+
+    return () => {
+      shutdownCamera();
+    };
   }, []);
 
   useEffect(() => {
@@ -52,9 +53,10 @@ function ExperimentScreen() {
       
       setResponses(prevResponses => [...prevResponses, newResponse]);
       
-      if (currentDigitIndex < 9) {
+      if (currentDigitIndex < 8) {  
         setCurrentDigitIndex(currentDigitIndex + 1);
       } else {
+        // Automatically end the trial after the last digit
         endTrial();
       }
     }
@@ -73,7 +75,7 @@ function ExperimentScreen() {
 
     if (allCorrect) {
       try {
-        imageBlob = await takePicture();
+        imageBlob = await queueCapture();
       } catch (error) {
         console.error('Failed to take picture:', error);
       }
@@ -89,31 +91,40 @@ function ExperimentScreen() {
 
     setTrialData(prevData => [...prevData, newTrialData]);
 
+    // Save trial data to IndexedDB
+    await saveTrialData(db, newTrialData);
+
     if (currentTrial < 20) {
-      setCurrentTrial(currentTrial + 1);
+      // Automatically advance to the next trial after a short delay
+      setTimeout(() => {
+        setCurrentTrial(currentTrial + 1);
+        setCurrentDigitIndex(0);
+        setResponses([]);
+      }, 1000);  // 1-second delay between trials
     } else {
       setExperimentComplete(true);
     }
   };
+
   const exportData = async () => {
     const zip = new JSZip();
     let csvContent = "Trial Number,Effort Level,All Correct,Image Name,Responses\n";
-  
-    trialData.forEach((trial, index) => {
-      if (index < 20) {  // Only process the first 20 trials
-        const imageName = trial.imageBlob ? `trial_${trial.trialNumber}_image.jpg` : 'No Image';
-        csvContent += `${trial.trialNumber},${trial.effortLevel},${trial.allCorrect},${imageName},`;
-        csvContent += trial.responses.map(r => `${r.digit}:${r.response}:${r.correct}`).join('|');
-        csvContent += "\n";
-  
-        if (trial.imageBlob) {
-          zip.file(imageName, trial.imageBlob);
-        }
+
+    const allTrialData = await getAllTrialData(db);
+
+    allTrialData.forEach((trial) => {
+      const imageName = trial.imageBlob ? `Image${trial.trialNumber}.${trial.effortLevel}.jpg` : 'No Image';
+      csvContent += `${trial.trialNumber},${trial.effortLevel},${trial.allCorrect},${imageName},`;
+      csvContent += trial.responses.map(r => `${r.digit}:${r.response}:${r.correct}`).join('|');
+      csvContent += "\n";
+
+      if (trial.imageBlob) {
+        zip.file(imageName, trial.imageBlob);
       }
     });
-  
+
     zip.file("experiment_data.csv", csvContent);
-  
+
     const zipBlob = await zip.generateAsync({type: "blob"});
     saveAs(zipBlob, "experiment_results.zip");
   };
@@ -153,6 +164,9 @@ function ExperimentScreen() {
         ))}
       </div>
       <p>Press 'F' for odd numbers, 'J' for even numbers</p>
+      <p>Press either 'F' or 'J' for next trial.</p>
     </div>
   );
-}export default ExperimentScreen;
+}
+
+export default ExperimentScreen;
