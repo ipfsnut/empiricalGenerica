@@ -6,9 +6,11 @@ import ResultsView from './ResultsView';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { generateTrialNumbers } from '../utils/numberGenerator';
+import { CONFIG } from '../utils/config';
+
 function ExperimentScreen() {
   const [currentTrial, setCurrentTrial] = useState(1);
-  const [number, setNumber] = useState('');
+  const [digits, setDigits] = useState([]);
   const [currentDigitIndex, setCurrentDigitIndex] = useState(0);
   const [responses, setResponses] = useState([]);
   const [db, setDB] = useState(null);
@@ -30,7 +32,7 @@ function ExperimentScreen() {
 
   useEffect(() => {
     if (trialNumbers.length > 0) {
-      setNumber(trialNumbers[currentTrial - 1].number);
+      setDigits(trialNumbers[currentTrial - 1].number.split(''));
       setCurrentEffortLevel(trialNumbers[currentTrial - 1].effortLevel);
       setCurrentDigitIndex(0);
       setResponses([]);
@@ -38,14 +40,14 @@ function ExperimentScreen() {
   }, [currentTrial, trialNumbers]);
 
   const handleKeyPress = useCallback((event) => {
-    if (event.key === 'f' || event.key === 'j') {
-      const isOdd = number[currentDigitIndex] % 2 !== 0;
-      const isCorrect = (event.key === 'f' && isOdd) || (event.key === 'j' && !isOdd);
+    if (event.key === CONFIG.KEYS.ODD || event.key === CONFIG.KEYS.EVEN) {
+      const isOdd = parseInt(digits[currentDigitIndex]) % 2 !== 0;
+      const isCorrect = (event.key === CONFIG.KEYS.ODD && isOdd) || (event.key === CONFIG.KEYS.EVEN && !isOdd);
       
       const newResponse = { 
         trialNumber: currentTrial,
         digitIndex: currentDigitIndex,
-        digit: number[currentDigitIndex], 
+        digit: digits[currentDigitIndex], 
         response: event.key, 
         correct: isCorrect,
         responseTime: performance.now()
@@ -53,14 +55,13 @@ function ExperimentScreen() {
       
       setResponses(prevResponses => [...prevResponses, newResponse]);
       
-      if (currentDigitIndex < 8) {  
+      if (currentDigitIndex < CONFIG.DIGITS_PER_TRIAL - 1) {  
         setCurrentDigitIndex(currentDigitIndex + 1);
       } else {
-        // Automatically end the trial after the last digit
         endTrial();
       }
     }
-  }, [number, currentDigitIndex, currentTrial]);
+  }, [digits, currentDigitIndex, currentTrial]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyPress);
@@ -94,13 +95,12 @@ function ExperimentScreen() {
     // Save trial data to IndexedDB
     await saveTrialData(db, newTrialData);
 
-    if (currentTrial < 20) {
-      // Automatically advance to the next trial after a short delay
+    if (currentTrial < CONFIG.TOTAL_TRIALS) {
       setTimeout(() => {
         setCurrentTrial(currentTrial + 1);
         setCurrentDigitIndex(0);
         setResponses([]);
-      }, 1000);  // 1-second delay between trials
+      }, CONFIG.INTER_TRIAL_DELAY);
     } else {
       setExperimentComplete(true);
     }
@@ -129,17 +129,6 @@ function ExperimentScreen() {
     saveAs(zipBlob, "experiment_results.zip");
   };
 
-  useEffect(() => {
-    if (trialNumbers.length > 0) {
-      console.log('Current trial:', currentTrial);
-      console.log('Trial number object:', trialNumbers[currentTrial - 1]);
-      setNumber(trialNumbers[currentTrial - 1].number);
-      setCurrentEffortLevel(trialNumbers[currentTrial - 1].effortLevel);
-      setCurrentDigitIndex(0);
-      setResponses([]);
-    }
-  }, [currentTrial, trialNumbers]);
-
   if (!cameraPermission) {
     return <div>Please grant camera permission to continue with the experiment.</div>;
   }
@@ -148,23 +137,13 @@ function ExperimentScreen() {
     return <ResultsView db={db} onExport={exportData} />;
   }
 
-  console.log('Rendering with number:', number);
-
   return (
     <div className="experiment-screen">
-      <h2>Trial {currentTrial} of 20</h2>
+      <h2>Trial {currentTrial} of {CONFIG.TOTAL_TRIALS}</h2>
       <div className="number-display">
-        {number.split('').map((digit, index) => (
-          <span 
-            key={index} 
-            className={index === currentDigitIndex ? 'highlighted' : ''}
-          >
-            {digit}
-          </span>
-        ))}
+        <span className="highlighted">{digits[currentDigitIndex]}</span>
       </div>
-      <p>Press 'F' for odd numbers, 'J' for even numbers</p>
-      <p>Press either 'F' or 'J' for next trial.</p>
+      <p>Press '{CONFIG.KEYS.ODD}' for odd numbers, '{CONFIG.KEYS.EVEN}' for even numbers</p>
     </div>
   );
 }

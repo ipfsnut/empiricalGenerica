@@ -1,50 +1,34 @@
-const EFFORT_LEVELS = {
-  1: '1-2 switches',
-  2: '3-4 switches',
-  3: '5-6 switches',
-  4: '7+ switches'
-};
+import { CONFIG } from './config';
 
-const generateDigit = () => Math.floor(Math.random() * 10);
+const generateMarkovNumber = (effortLevel) => {
+  const { min, max } = CONFIG.DIFFICULTY_LEVELS[effortLevel];
+  const targetSwitches = Math.floor(Math.random() * (max - min + 1)) + min;
 
-const countSwitches = (number) => {
+  let number = '';
+  let isOdd = Math.random() < 0.5;
   let switches = 0;
-  for (let i = 1; i < number.length; i++) {
-    if ((number[i] % 2) !== (number[i-1] % 2)) {
-      switches++;
+
+  for (let i = 0; i < CONFIG.DIGITS_PER_TRIAL; i++) {
+    if (switches < targetSwitches && i < CONFIG.DIGITS_PER_TRIAL - 1) {
+      const switchProbability = (targetSwitches - switches) / (CONFIG.DIGITS_PER_TRIAL - i);
+      if (Math.random() < switchProbability) {
+        isOdd = !isOdd;
+        switches++;
+      }
     }
+    number += isOdd ? (Math.floor(Math.random() * 5) * 2 + 1).toString() : (Math.floor(Math.random() * 5) * 2).toString();
   }
-  return switches;
-};
 
-const generateNumber = (effortLevel) => {
-  let number;
-  let switches;
-  do {
-    number = Array(9).fill().map(() => generateDigit()).join('');
-    switches = countSwitches(number);
-  } while (!isValidForLevel(switches, effortLevel));
-  
   return { number, effortLevel };
-};
-
-const isValidForLevel = (switches, level) => {
-  switch (level) {
-    case '1': return switches >= 1 && switches <= 2;
-    case '2': return switches >= 3 && switches <= 4;
-    case '3': return switches >= 5 && switches <= 6;
-    case '4': return switches >= 7;
-    default: return false;
-  }
 };
 
 export const generateTrialNumbers = () => {
   const trialNumbers = [];
-  const effortLevels = Object.keys(EFFORT_LEVELS);
+  const effortLevels = Object.keys(CONFIG.DIFFICULTY_LEVELS);
   
-  for (let i = 0; i < 20; i++) {
-    const level = effortLevels[Math.floor(i / 5) % 4];
-    trialNumbers.push(generateNumber(level));
+  for (let i = 0; i < CONFIG.TOTAL_TRIALS; i++) {
+    const level = effortLevels[Math.floor(i / (CONFIG.TOTAL_TRIALS / effortLevels.length))];
+    trialNumbers.push(generateMarkovNumber(level));
   }
   
   // Shuffle the trial numbers
